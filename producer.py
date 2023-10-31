@@ -1,21 +1,26 @@
 import pandas as pd
 
 
-music_data = pd.read_csv("cleaned_music_data.csv")
+music_data = pd.read_csv("cleaned_data.csv")
 
 # Read user preferences
 user_preferences = {
-    "Electronic": 0.7,
-    "Rap": 0.3,
-    "Anime": 0.5,
-    "Hip-Hop": 0.8,
-    "Jazz": 0.4,
+    "Electronic": 0.5,
+    "Rap": 0.9,
+    "Anime": 0.2,
+    "Hip-Hop": 0.6,
+    "Jazz": 0.3,
     "Blues": 0.2,
-    "Country": 0.6,
-    "Alternative": 0.9,
+    "Country": 0.4,
+    "Alternative": 0.1,
     "Classical": 0.3,
-    "Rock": 0.7,
-   
+    "Rock": 0.5,
+    "Popularity": 0.5,  # Add popularity preference
+    "Acousticness": 0.3,  # Add acousticness preference
+    "Duration_ms": 0.4,  # Add duration preference
+    "Energy": 0.1,  # Add energy preference
+    "Loudness": 0.2,  # Add loudness preference
+    # Add parameters for other features
 }
 
 # Define trapezoidal membership
@@ -34,14 +39,20 @@ def trapezoidal_membership(x, params):
     else:
         return (upper_right - x) / (upper_right - upper_peak)
 
-#fuzzy inference for song recommendation
-
+# Define fuzzy inference for song recommendation
 def fuzzy_inference(preferences, music_data):
     recommendations = {}
 
-   
-    membership_params = {
-        "Electronic": {"lower_left": 0.2, "lower_peak": 0.4, "upper_peak": 0.6, "upper_right": 0.8},
+    for song_index, song_row in music_data.iterrows():
+        track_name = song_row["track_name"]
+        recommendation_strength = 0
+
+        for preference, preference_value in preferences.items():
+            # Ensure the preference is in the data columns
+            if preference in music_data.columns:
+                membership_value_for_feature = song_row[preference]
+                membership_params = {
+                            "Electronic": {"lower_left": 0.2, "lower_peak": 0.4, "upper_peak": 0.6, "upper_right": 0.8},
         "Rap": {"lower_left": 0.1, "lower_peak": 0.3, "upper_peak": 0.7, "upper_right": 0.9},
         "Anime": {"lower_left": 0.0, "lower_peak": 0.2, "upper_peak": 0.5, "upper_right": 0.7},
         "Hip-Hop": {"lower_left": 0.1, "lower_peak": 0.4, "upper_peak": 0.6, "upper_right": 0.8},
@@ -56,26 +67,19 @@ def fuzzy_inference(preferences, music_data):
         "Metal": {"lower_left": 0.1, "lower_peak": 0.4, "upper_peak": 0.7, "upper_right": 0.9},
         "Funk": {"lower_left": 0.1, "lower_peak": 0.3, "upper_peak": 0.6, "upper_right": 0.8},
         "R&B": {"lower_left": 0.1, "lower_peak": 0.3, "upper_peak": 0.7, "upper_right": 0.9},
-        
-    }
+                }  # Define appropriate membership parameters
 
-    for genre in preferences:
-        # Ensure the genre is in the membership parameters dictionary
-        if genre in membership_params:
-            membership_value = preferences[genre]
-            params = membership_params[genre]
+                # Calculate membership using trapezoidal_membership function
+                membership_function = trapezoidal_membership(
+                    membership_value_for_feature, membership_params)
+                recommendation_strength += preference_value * membership_function
 
-            # Calculate membership using trapezoidal_membership function
-            membership_function = trapezoidal_membership(
-                membership_value, params)
+        recommendations[track_name] = recommendation_strength
 
-            if membership_function > 0:
-                recommendations[genre] = membership_function * 0.8
+    # Choose the song with the highest recommendation strength
+    recommended_song = max(recommendations, key=recommendations.get)
+    return recommended_song
 
-    # Choose the genre with the highest recommendation strength
-    recommended_genre = max(recommendations, key=recommendations.get)
-    return recommended_genre
-
-# Make music genre recommendations
-recommended_genre = fuzzy_inference(user_preferences, music_data)
-print("Recommended Genre:", recommended_genre)
+# Make music song recommendations
+recommended_song = fuzzy_inference(user_preferences, music_data)
+print("Recommended Song:", recommended_song)
